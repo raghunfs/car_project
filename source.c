@@ -48,7 +48,7 @@
 #define LED_DDR  DDRC
 
 
-unsigned char car_state;
+unsigned char car_state = STOP;
 
 //toggle car state inside ISR.
 ISR(INT5_vect)
@@ -72,8 +72,9 @@ ISR(INT5_vect)
 		car_state = RUNNING;
 		// set OCXA pins
 
-		SERVO_PORT = 1;
-		MOTOR_PWM_PORT = 1;
+		SET_BIT(PORTB,PB5);
+		SET_BIT(PORTH,PH3);
+
 		// set for clockwise rotation
 		SET_BIT(MOTOR_INPUT_PORT, PK1);
 		// set initial speed	
@@ -88,7 +89,7 @@ ISR(INT5_vect)
 		RESET_BIT(LED_PORT, PC0);
 		RESET_BIT(TIMSK1,OCIE1A);
 		RESET_BIT(TCCR1A,COM1A1);
-		RESET_BIT(TIMSK4,OCI44A);
+		RESET_BIT(TIMSK4,OCIE4A);
 		RESET_BIT(TCCR4A,COM4A1);
 	}	
 }
@@ -96,10 +97,10 @@ ISR(INT5_vect)
 // Initialize DDR pins
 void init(void)
 {
-	PUSHB_DDE = INPUT;
+	PORTE = 0XBF; // DDE5 as input
 	SESNSOR_DDR = INPUT;
-	SERVO_DDR = OUTPUT;
-	MOTOR_PWM_DDR = OUTPUT;
+	PORTB = 0x80; // DDB5 as output
+	PORTH = 0x04; // DDH3 as output
 	MOTOR_INPUT_DDR = INPUT;
 	LED_DDR = 0X03; // PC0 and PC1 as output
 
@@ -122,10 +123,16 @@ int main(void)
 {
 	unsigned char color;
 	unsigned char right_side, left_side;
+	unsigned char state; 
 	init();
-	
+
+	//EIMSK |= _BV(INT5);
+	//EICRA |= _BV(ISC41)| _BV(ISC40);
+	//GICR = 1 << INT5;
+	//MCUCR = 1 << ISC41 | 1<< ISC40; 	
 	//enable interrupts
 	sei();
+	
 	
 	while(RUNNING == car_state)
 	{
