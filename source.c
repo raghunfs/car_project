@@ -8,7 +8,7 @@
 
 #define TOP_SERVO 		1250
 #define TOP_MOTOR		15
-#define INITIAL_SPEED 		2
+#define INITIAL_SPEED 	2
 #define STEP 			1
 #define MAX_SPEED 		5 // TOP_MOTOR/3
 
@@ -17,7 +17,7 @@
 #define PUSHB_DDE  DDE5
 #define PUSHB_PIN  PINE5
 
-// PORTA to read IR sesnsor values
+// PORTA to read IR sensor values
 #define SENSOR_PORT PORTA
 #define SESNSOR_DDR DDRA
 
@@ -51,7 +51,8 @@
 unsigned char car_state = STOP;
 
 //toggle car state inside ISR.
-ISR(INT5_vect)
+//ISR(INT5_vect)
+void pushb_handle(void)
 {
 	if(car_state == STOP)
 	{
@@ -64,7 +65,7 @@ ISR(INT5_vect)
 		SET_BIT(TIMSK1,OCIE1A);
 
 		// set non inverted PWM
-                SET_BIT(TCCR4A,COM4A1);
+		SET_BIT(TCCR4A,COM4A1);
 
 		// start motor timer
 		SET_BIT(TIMSK4,OCIE4A);
@@ -77,8 +78,8 @@ ISR(INT5_vect)
 
 		// set for clockwise rotation
 		SET_BIT(MOTOR_INPUT_PORT, PK1);
-		// set initial speed	
-		OCR4A = INITIAL_SPEED; 
+		// set initial speed
+		OCR4A = INITIAL_SPEED;
 
 	}
 	else
@@ -91,17 +92,17 @@ ISR(INT5_vect)
 		RESET_BIT(TCCR1A,COM1A1);
 		RESET_BIT(TIMSK4,OCIE4A);
 		RESET_BIT(TCCR4A,COM4A1);
-	}	
+	}
 }
 
 // Initialize DDR pins
 void init(void)
 {
-	PORTE = 0XBF; // DDE5 as input
+	DDRE = 0XDF; // DDE5 as input
 	SESNSOR_DDR = INPUT;
-	PORTB = 0x80; // DDB5 as output
-	PORTH = 0x04; // DDH3 as output
-	MOTOR_INPUT_DDR = INPUT;
+	DDRB = 0x20; // DDB5 as output
+	DDRH = 0x08; // DDH3 as output
+	DDRK = 0x02;
 	LED_DDR = 0X03; // PC0 and PC1 as output
 
 	// set PRESCALE to 64 (1<<CS11)|(1<<CS10)
@@ -112,9 +113,9 @@ void init(void)
 	// count value equivalent to 20 ms, fOCnxPWM is set to 200HZ
 	ICR1 = TOP_SERVO;
 
-	// timer/couter 4 for motor
+	// timer/counter 4 for motor
 	TCCR4A |= (1<<WGM41);
-        TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS41)|(1<<CS40); 
+	TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS41)|(1<<CS40);
 	ICR4 = TOP_MOTOR;
 }
 
@@ -123,17 +124,22 @@ int main(void)
 {
 	unsigned char color;
 	unsigned char right_side, left_side;
-	unsigned char state; 
+	unsigned char state;
 	init();
 
-	//EIMSK |= _BV(INT5);
-	//EICRA |= _BV(ISC41)| _BV(ISC40);
-	//GICR = 1 << INT5;
-	//MCUCR = 1 << ISC41 | 1<< ISC40; 	
-	//enable interrupts
 	sei();
 	
+	while(1)
+	{
+		state = PINE ;
+		if(0x20 == state)
+		{
+			pushb_handle();
+			break;
+		}
+	}
 	
+
 	while(RUNNING == car_state)
 	{
 		color = SENSOR_PORT;
@@ -146,6 +152,14 @@ int main(void)
 			OCR1A = 125;
 		}
 		
+		state = PINE ;
+		if(0x00 == state)
+		{
+			pushb_handle();
+			break;
+		}
+		
 	}
-	return 0;
+	
+return 0;	
 }
