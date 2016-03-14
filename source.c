@@ -7,10 +7,10 @@
 #define RESET_BIT(port, bit) {port &= ~(1<<bit);}
 
 #define TOP_SERVO 		1250
-#define TOP_MOTOR		15
-#define INITIAL_SPEED 	2
+#define TOP_MOTOR		132
+#define INITIAL_SPEED 		30
 #define STEP 			1
-#define MAX_SPEED 		5 // TOP_MOTOR/3
+#define MAX_SPEED 		44 // TOP_MOTOR/3
 
 // using PE5 for start and stop
 #define PUSHB_PORT PORTE5
@@ -56,13 +56,18 @@ void pushb_handle(void)
 {
 	if(car_state == STOP)
 	{
-		// light an LED
+		// lighta LED
 		SET_BIT(LED_PORT, PC0);
 
+		car_state = RUNNING;
+		
 		// set non inverted PWM
 		SET_BIT(TCCR1A,COM1A1);
 		// start servo timer
 		SET_BIT(TIMSK1,OCIE1A);
+
+		SET_BIT(PORTB,PB5);
+		
 
 		// set non inverted PWM
 		SET_BIT(TCCR4A,COM4A1);
@@ -70,10 +75,8 @@ void pushb_handle(void)
 		// start motor timer
 		SET_BIT(TIMSK4,OCIE4A);
 
-		car_state = RUNNING;
 		// set OCXA pins
 
-		SET_BIT(PORTB,PB5);
 		SET_BIT(PORTH,PH3);
 
 		// set for clockwise rotation
@@ -87,7 +90,7 @@ void pushb_handle(void)
 		car_state = STOP;
 		// reset all the pins set in if condition
 
-		RESET_BIT(LED_PORT, PC0);
+		//RESET_BIT(LED_PORT, PC0);
 		RESET_BIT(TIMSK1,OCIE1A);
 		RESET_BIT(TCCR1A,COM1A1);
 		RESET_BIT(TIMSK4,OCIE4A);
@@ -98,12 +101,12 @@ void pushb_handle(void)
 // Initialize DDR pins
 void init(void)
 {
-	DDRE = 0XDF; // DDE5 as input
+	DDRE = 0X0; // DDE5 as input
 	SESNSOR_DDR = INPUT;
-	DDRB = 0x20; // DDB5 as output
-	DDRH = 0x08; // DDH3 as output
-	DDRK = 0x02;
-	LED_DDR = 0X03; // PC0 and PC1 as output
+	DDRB = _BV(PB5); // DDB5 as output
+	DDRH = _BV(PH3); // DDH3 as output
+	DDRK = _BV(PK1)|_BV(PK2)|_BV(PK3);
+	LED_DDR = _BV(PC1)|_BV(PC0); // PC0 and PC1 as output
 
 	// set PRESCALE to 64 (1<<CS11)|(1<<CS10)
 	// set PWM to fast mode
@@ -114,8 +117,9 @@ void init(void)
 	ICR1 = TOP_SERVO;
 
 	// timer/counter 4 for motor
+	// prescalar as 8
 	TCCR4A |= (1<<WGM41);
-	TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS41)|(1<<CS40);
+	TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS41);
 	ICR4 = TOP_MOTOR;
 }
 
@@ -125,41 +129,42 @@ int main(void)
 	unsigned char color;
 	unsigned char right_side, left_side;
 	unsigned char state;
+	unsigned char prev_state = 0;
 	init();
 
 	sei();
 	
 	while(1)
 	{
-		state = PINE ;
-		if(0x20 == state)
-		{
-			pushb_handle();
-			break;
-		}
-	}
-	
-
-	while(RUNNING == car_state)
-	{
-		color = SENSOR_PORT;
 		
-		if(0XFF != car_state)
+		state = !(PINE & _BV(PE5));
+		//if(1 == state && 0 == prev_state)
+		if(1)
 		{
-			right_side = color & GET_RIGHT;
+			PINC |= _BV(PC1);
+			_delay_ms(500);
+			//pushb_handle();
 			
-			left_side = (color & GET_LEFT)>>4;
-			OCR1A = 125;
 		}
-		
-		state = PINE ;
-		if(0x00 == state)
-		{
-			pushb_handle();
-			break;
-		}
-		
-	}
 	
+		prev_state = state;
+
+		if(RUNNING == car_state)
+		{
+			color = SENSOR_PORT;
+		
+			if(0XFF != car_state)
+			{
+				right_side = color & GET_RIGHT;
+			
+				left_side = (color & GET_LEFT)>>4;
+				OCR1A = 125;
+			}
+		
+		}
+	
+	}
 return 0;	
 }
+
+
