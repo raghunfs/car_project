@@ -7,10 +7,11 @@
 #define RESET_BIT(port, bit) {port &= ~(1<<bit);}
 
 #define TOP_SERVO 		1250
-#define TOP_MOTOR		132 // for 15 kHz
-#define INITIAL_SPEED 		22
+//#define TOP_MOTOR		132 // for 15 kHz
+#define TOP_MOTOR		200 // for 10 kHz
+#define INITIAL_SPEED 		30
 #define STEP 			1
-#define MAX_SPEED 		44 // TOP_MOTOR/3
+#define MAX_SPEED 		66 // TOP_MOTOR/3
 
 // using PE5 for start and stop
 #define PUSHB_PORT PORTE5
@@ -70,6 +71,8 @@ void pushb_handle(void)
 
 		OCR4A = INITIAL_SPEED;
 		//OCR4A = MAX_SPEED;
+        	TCCR1A |= 1 << COM1A1;
+        	PORTB |= (1 << PB5);
 		
 	}
 
@@ -99,7 +102,7 @@ void init(void)
 	
 
 	DDRH = _BV(PH3);
-        DDRK = _BV(PK1)|_BV(PK0);
+        DDRK = _BV(PK1);
 
 
 	// set PRESCALE to 64 (1<<CS11)|(1<<CS10)
@@ -115,6 +118,7 @@ void init(void)
 	TCCR4A |= (1<<WGM41);
         TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS41); // 8
         //TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS42); // 256
+        //TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS40)|(1<<CS41); // 64
 	ICR4 = TOP_MOTOR;
 }
 
@@ -131,8 +135,8 @@ int main(void)
 	
 	while(1)
 	{
-		state = !(PINE & _BV(PE5));
-		//state = !(PINA & _BV(PA0));
+		////state = !(PINE & _BV(PE5));
+		state = !(PINA & _BV(PA0));
 		if(1 == state && 0 == prev_state)
 		{
 			PINC |= _BV(PC1);
@@ -141,7 +145,7 @@ int main(void)
 							
 		}
 		prev_state = state;
-
+		
 		if(RUNNING == car_state)
 		{
 			color = SENSOR_PORT;
@@ -151,7 +155,6 @@ int main(void)
 				right_side = color & GET_RIGHT;
 			
 				left_side = (color & GET_LEFT)>>4;
-				OCR1A = 125;
 			}
 		
 		}
