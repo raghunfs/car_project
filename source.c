@@ -6,18 +6,6 @@
 #define SET_BIT(port , bit) {port |= (1<<bit);}
 #define RESET_BIT(port, bit) {port &= ~(1<<bit);}
 
-#define SERVO_TURN(value)\
-{\
-        TCCR1A |= 1 << COM1A1;\
-	OCR1A = value;\
-}
-
-#define SERVO_BACK(value)\
-{\
-	TCCR1A &= ~ (1 << COM1A1);\
-	OCR1A = value;\
-}
-
 
 #define TOP_SERVO 		1250
 //#define TOP_MOTOR		132 // for 15 kHz
@@ -135,21 +123,7 @@ void init(void)
         //TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS40)|(1<<CS41); // 64
 	ICR4 = TOP_MOTOR;
 	
-	TCCR3A |= (1<<WGM31);
-        TCCR3B |= (1<<WGM33)|(1<<WGM32)|(1<<CS31)| (1<< CS30); // 8
-	ICR3 = 4999;
-	
 }
-
-ISR(TIMER3_COMPA_vect)
-{
-	SET_BIT(LED_PORT, PC5);
-	SERVO_BACK(60);
- 	RESET_BIT(TIMSK3,OCIE3A);
-        RESET_BIT(TCCR3A,COM3A1);
-
-}
-
 
 
 int main(void)
@@ -175,12 +149,8 @@ int main(void)
 			pushb_handle();	
 			_delay_ms(500);
 							
-#if 1
-			for(count = 0; count < 10 ; count ++ )
+/*			for(count = 0; count < 10 ; count ++ )
 			{
-				//SERVO_TURN(125);
- 				//SET_BIT(TIMSK3,OCIE3A);
-        			//SET_BIT(TCCR3A,COM3A1);
 				TCCR1A |= 1 << COM1A1;
 				if(count%2 == 0)
 				{ 
@@ -194,11 +164,29 @@ int main(void)
 					
 				}
 				TCCR1A &= ~(1 << COM1A1);
-				//SERVO_BACK(60);
 			}
-#endif
+*/
 		}
 		prev_state = state;
+
+                if(RUNNING == car_state)
+                {
+                        color = SENSOR_PORT;
+                
+                        if(0XFF != car_state)
+                        {
+                                right_side = color & GET_RIGHT;
+				if(0xFF > right_side)
+				OCR1A = 400;
+				
+                        
+                                left_side = (color & GET_LEFT)>>4;
+				if(0xFF > left_side)
+                                OCR1A = 325;
+                        }
+                
+                }
+
 	
 			
 	}
