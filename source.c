@@ -9,11 +9,13 @@
 
 
 #define TOP_SERVO 		1250 // 200HZ
-#define SERVO_CENTER 	375
-#define SERVO_STEP		15
+#define SERVO_CENTER 		375
+#define SERVO_LEFTMOST		312
+#define SERVO_RIGHTMOST		439
+#define SERVO_STEP		22
 
 #define TOP_MOTOR		200 // for 10 kHz
-#define INITIAL_SPEED 		25
+#define INITIAL_SPEED 		30
 #define STEP 			1
 #define MAX_SPEED 		66 // TOP_MOTOR/3
 
@@ -67,42 +69,87 @@
 }
 
 unsigned char car_state = STOP;
-unsigned short int servo_position;
-unsigned char prev_IR_read = 0x18;
+volatile unsigned short int servo_position;
+volatile unsigned char prev_IR_read = 0x18;
 
 
 ISR(TIMER3_COMPA_vect)
 {
-	SERVO_BACK();
-}
-
-void follow_line(void)
-{
-	//uint8_t IR_read = ~ SENSOR_PORT;
 	uint8_t IR_read = ~PINA;
-	
-	if(0xFF == IR_read)
+#if 0	
+	if(IR_read > 0x18)
 	{
-		PINC |= _BV(PC0);  //debug
+			PINC |= _BV(PC1);  //debug
+
+		if(prev_IR_read < IR_read)
+		{
+			servo_position += (SERVO_LEFTMOST + SERVO_STEP);
+		}
+		else
+		{
+			//PINC |= _BV(PC1);  //debug
+			servo_position -= SERVO_STEP;
+			servo_position = (servo_position < SERVO_CENTER) ? SERVO_CENTER: servo_position;
+		}
+		//SERVO_TURN(servo_position);
+		OCR1A = servo_position;
 	}
-	else if(IR_read > 0x18)
-	{
-		PINC |= _BV(PC1);  //debug
-		servo_position = (prev_IR_read < IR_read ? (servo_position - SERVO_STEP) 
-					: (servo_position + SERVO_STEP));
-		SERVO_TURN(servo_position);
-	}
+//#else
 	else if(IR_read < 0x18)
 	{
-		//PINC |= _BV(PC0);  //debug
-		servo_position += SERVO_STEP;
-		servo_position = (prev_IR_read > IR_read ? (servo_position + SERVO_STEP) 
-						: (servo_position - SERVO_STEP));
-						
-		SERVO_TURN(servo_position);
+		//servo_position += SERVO_STEP;
+		PINC |= _BV(PC0);  //debug
+
+		if(prev_IR_read > IR_read)
+		{
+			servo_position += (SERVO_RIGHTMOST - SERVO_STEP);
+		}
+		else
+		{
+			servo_position += SERVO_STEP;
+			servo_position = (servo_position > SERVO_CENTER) ? SERVO_CENTER: servo_position;
+		}				
+		//SERVO_TURN(servo_position);
+		OCR1A = servo_position;
 	}
-	
+	else
+	{
+		servo_position = SERVO_CENTER;
+	}
 	prev_IR_read = IR_read;
+#endif
+
+	switch(IR_read)
+	{
+		case 0x80:
+			OCR1A = SERVO_RIGHTMOST;
+			break;
+
+		case 0x40:
+			OCR1A = SERVO_RIGHTMOST -  (1 * SERVO_STEP);
+			break;
+		case 0x20:
+			OCR1A = SERVO_RIGHTMOST -  (2 * SERVO_STEP);
+			break;
+		case 0x10:
+			OCR1A = SERVO_CENTER;
+			break;
+		case 0x01:
+			OCR1A = SERVO_CENTER;
+			break;
+		case 0x02:
+			OCR1A = SERVO_LEFTMOST + (2 * SERVO_STEP);
+			break;
+		case 0x04:
+			OCR1A = SERVO_LEFTMOST + (1 * SERVO_STEP);
+			break;
+		case 0x08:
+			OCR1A = SERVO_LEFTMOST;
+			break;
+		default:
+			//OCR1A = SERVO_CENTER;
+			break;
+	}
 }
 
 
@@ -127,19 +174,24 @@ void pushb_handle(void)
 		
 		OCR1A = SERVO_CENTER;
 		servo_position = SERVO_CENTER;
+
+		TIMSK3 |= 1 << OCIE3A;
 		
 	}
-
 	else if(car_state == RUNNING)
 	{
+		OCR1A = SERVO_CENTER;
 		car_state = STOP;
 		// reset all the pins set in if condition
 
+		PORTB &= ~(1<<PB5);
 		PORTH &= ~(1<<PH3);
 		PORTK &= ~(1<<PK1);
-		TIMSK4 &= ~(1<<OCIE4A);
 		TCCR4A &= ~(1<< COM4A1);
+		TCCR1A &= ~(1<< COM1A1);
 		RESET_BIT(LED_PORT, PC0);
+		RESET_BIT(LED_PORT, PC1);
+		TIMSK3 &= ~(1 << OCIE3A);
 	}
 }
 
@@ -173,6 +225,7 @@ void init(void)
 	TCCR3A |= (1<<WGM31);
 	TCCR3B |= (1<<WGM33)|(1<<WGM32)|(1<<CS31)| (1 << CS30); //  pre-scalar 64
 	ICR3 = 1250; // 200hz
+	//ICR3 = 2500; // 100hz
 }
 
 
@@ -198,12 +251,6 @@ int main(void)
 		}
 		prev_state = state;
 
-		if(RUNNING == car_state)
-		{
-			follow_line();
 		}
-	}
 	return 0;
 }
-
-
