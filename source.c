@@ -11,8 +11,8 @@
 #define TOP_SERVO 		1250 // 200HZ
 #define SERVO_CENTER 		375
 #define SERVO_LEFTMOST		312
-#define SERVO_RIGHTMOST		439
-#define SERVO_STEP		22
+#define SERVO_RIGHTMOST		437
+#define SERVO_STEP		20
 
 #define TOP_MOTOR		200 // for 10 kHz
 #define INITIAL_SPEED 		30
@@ -76,7 +76,7 @@ volatile unsigned char prev_IR_read = 0x18;
 ISR(TIMER3_COMPA_vect)
 {
 	uint8_t IR_read = ~PINA;
-#if 0	
+#if 0
 	if(IR_read > 0x18)
 	{
 			PINC |= _BV(PC1);  //debug
@@ -108,7 +108,7 @@ ISR(TIMER3_COMPA_vect)
 		{
 			servo_position += SERVO_STEP;
 			servo_position = (servo_position > SERVO_CENTER) ? SERVO_CENTER: servo_position;
-		}				
+		}
 		//SERVO_TURN(servo_position);
 		OCR1A = servo_position;
 	}
@@ -122,28 +122,35 @@ ISR(TIMER3_COMPA_vect)
 	switch(IR_read)
 	{
 		case 0x80:
-			OCR1A = SERVO_RIGHTMOST;
+			OCR4A = INITIAL_SPEED;
+			OCR1A = SERVO_RIGHTMOST + SERVO_STEP;
 			break;
-
 		case 0x40:
-			OCR1A = SERVO_RIGHTMOST -  (1 * SERVO_STEP);
+			OCR4A = INITIAL_SPEED;
+			OCR1A = SERVO_RIGHTMOST /*-  (1 * SERVO_STEP)*/;
 			break;
 		case 0x20:
-			OCR1A = SERVO_RIGHTMOST -  (2 * SERVO_STEP);
+			OCR4A = INITIAL_SPEED;
+			OCR1A = SERVO_RIGHTMOST -  (1 * SERVO_STEP);
 			break;
 		case 0x10:
+			OCR4A = 55;
 			OCR1A = SERVO_CENTER;
-			break;
-		case 0x01:
-			OCR1A = SERVO_CENTER;
-			break;
-		case 0x02:
-			OCR1A = SERVO_LEFTMOST + (2 * SERVO_STEP);
-			break;
-		case 0x04:
-			OCR1A = SERVO_LEFTMOST + (1 * SERVO_STEP);
 			break;
 		case 0x08:
+			OCR4A = 55;
+			OCR1A = SERVO_CENTER;
+			break;
+		case 0x04:
+			OCR4A = INITIAL_SPEED;
+			OCR1A = SERVO_LEFTMOST + (2 * SERVO_STEP);
+			break;
+		case 0x02:
+			OCR4A = INITIAL_SPEED;
+			OCR1A = SERVO_LEFTMOST + (1 * SERVO_STEP);
+			break;
+		case 0x01:
+			OCR4A = INITIAL_SPEED;
 			OCR1A = SERVO_LEFTMOST;
 			break;
 		default:
@@ -166,17 +173,17 @@ void pushb_handle(void)
 		PORTK |= (1 << PK0);
 
 		TCCR4A |= 1 << COM4A1;
-		
+
 		OCR4A = INITIAL_SPEED;
-		
+
 		TCCR1A |= 1 << COM1A1;
 		PORTB |= (1 << PB5);
-		
+
 		OCR1A = SERVO_CENTER;
 		servo_position = SERVO_CENTER;
 
 		TIMSK3 |= 1 << OCIE3A;
-		
+
 	}
 	else if(car_state == RUNNING)
 	{
@@ -219,13 +226,14 @@ void init(void)
 	// prescalar as 8
 	TCCR4A |= (1<<WGM41);
 	TCCR4B |= (1<<WGM43)|(1<<WGM42)|(1<<CS41); // 8
-	ICR4 = TOP_MOTOR;	
-	
+	ICR4 = TOP_MOTOR;
+
 	// timer3 for servo control
 	TCCR3A |= (1<<WGM31);
 	TCCR3B |= (1<<WGM33)|(1<<WGM32)|(1<<CS31)| (1 << CS30); //  pre-scalar 64
-	ICR3 = 1250; // 200hz
+	//ICR3 = 1250; // 200hz
 	//ICR3 = 2500; // 100hz
+	ICR3 = 5000;
 }
 
 
@@ -233,13 +241,13 @@ int main(void)
 {
 	unsigned char state = 0;
 	unsigned char prev_state = 0;
-	
+
 	init();
 
 	sei();
 
 	// using timer/counter three for servo control
-	
+
 	while(1)
 	{
 		state = !(PINE & _BV(PE5));
