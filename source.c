@@ -15,7 +15,7 @@
 #define SERVO_STEP		20
 
 #define TOP_MOTOR		200 // for 10 kHz
-#define INITIAL_SPEED 		30
+#define INITIAL_SPEED 		27
 #define STEP 			1
 #define MAX_SPEED 		66 // TOP_MOTOR/3
 
@@ -134,11 +134,11 @@ ISR(TIMER3_COMPA_vect)
 			OCR1A = SERVO_RIGHTMOST -  (1 * SERVO_STEP);
 			break;
 		case 0x10:
-			OCR4A = 55;
+			OCR4A = MAX_SPEED;
 			OCR1A = SERVO_CENTER;
 			break;
 		case 0x08:
-			OCR4A = 55;
+			OCR4A = MAX_SPEED;
 			OCR1A = SERVO_CENTER;
 			break;
 		case 0x04:
@@ -233,7 +233,7 @@ void init(void)
 	TCCR3B |= (1<<WGM33)|(1<<WGM32)|(1<<CS31)| (1 << CS30); //  pre-scalar 64
 	//ICR3 = 1250; // 200hz
 	//ICR3 = 2500; // 100hz
-	ICR3 = 5000;
+	ICR3 = 250;
 }
 
 
