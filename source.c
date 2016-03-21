@@ -1,4 +1,3 @@
-
 #include <inttypes.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
@@ -6,16 +5,29 @@
 
 #define SET_BIT(port , bit) {port |= (1<<bit);}
 #define RESET_BIT(port, bit) {port &= ~(1<<bit);}
-
+// set max speed for red and green car to 60
 
 #define TOP_SERVO 		1250 // 200HZ
 #define SERVO_CENTER 		375
-#define SERVO_LEFTMOST		312
-#define SERVO_RIGHTMOST		437
+//#define SERVO_LEFTMOST		312
+#define SERVO_LEFTMOST		290    // value for red and green car 
+
+
+//yellow car
+#if 0
+
+#define SERVO_RIGHTMOST		455
+#define SERVO_STEP		23
+#else // red and green car
+
+#define SERVO_RIGHTMOST		438
 #define SERVO_STEP		20
+#endif
+
 
 #define TOP_MOTOR		200 // for 10 kHz
-#define INITIAL_SPEED 		27
+//#define INITIAL_SPEED 		29  value for red and green car
+#define INITIAL_SPEED 		29	//yellow car
 #define STEP 			1
 #define MAX_SPEED 		66 // TOP_MOTOR/3
 
@@ -79,7 +91,7 @@ ISR(TIMER3_COMPA_vect)
 #if 0
 	if(IR_read > 0x18)
 	{
-			PINC |= _BV(PC1);  //debug
+		PINC |= _BV(PC1);  //debug
 
 		if(prev_IR_read < IR_read)
 		{
@@ -123,22 +135,22 @@ ISR(TIMER3_COMPA_vect)
 	{
 		case 0x80:
 			OCR4A = INITIAL_SPEED;
-			OCR1A = SERVO_RIGHTMOST + SERVO_STEP;
+			OCR1A = SERVO_RIGHTMOST;
 			break;
 		case 0x40:
 			OCR4A = INITIAL_SPEED;
-			OCR1A = SERVO_RIGHTMOST /*-  (1 * SERVO_STEP)*/;
+			OCR1A = SERVO_RIGHTMOST -  (1 * SERVO_STEP);
 			break;
 		case 0x20:
 			OCR4A = INITIAL_SPEED;
-			OCR1A = SERVO_RIGHTMOST -  (1 * SERVO_STEP);
+			OCR1A = SERVO_RIGHTMOST -  (2 * SERVO_STEP);
 			break;
 		case 0x10:
-			OCR4A = MAX_SPEED;
+			OCR4A = 60;
 			OCR1A = SERVO_CENTER;
 			break;
 		case 0x08:
-			OCR4A = MAX_SPEED;
+			OCR4A = 60;
 			OCR1A = SERVO_CENTER;
 			break;
 		case 0x04:
@@ -259,6 +271,6 @@ int main(void)
 		}
 		prev_state = state;
 
-		}
+	}
 	return 0;
 }
